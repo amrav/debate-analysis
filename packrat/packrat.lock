@@ -1,0 +1,67 @@
+PackratFormat: 1.4
+PackratVersion: 0.4.6.1
+RVersion: 3.2.2
+Repos: CRAN=https://cran.rstudio.com/
+
+Package: digest
+Source: CRAN
+Version: 0.6.8
+Hash: de202f956596a476d09304e3a2ebf1e5
+
+Package: htmltools
+Source: CRAN
+Version: 0.2.6
+Hash: 595e7dea94f5f049dfc1ed739f5161af
+Requires: digest
+
+Package: htmlwidgets
+Source: CRAN
+Version: 0.5
+Hash: 0aa33e8666baac6fcff4e376789b9c2e
+Requires: htmltools, jsonlite, yaml
+
+Package: jsonlite
+Source: CRAN
+Version: 0.9.19
+Hash: 4a983f753b6e88ae0f5a6ac152d8cc32
+
+Package: magrittr
+Source: CRAN
+Version: 1.5
+Hash: bdc4d48c3135e8f3b399536ddf160df4
+
+Package: packrat
+Source: CRAN
+Version: 0.4.6-1
+Hash: 29eacc43b096c5b1a82c8d54a49b030b
+
+Package: profvis
+Source: github
+Version: 0.1.0.9001
+Hash: 9f7123ed4420c739517295ec32c03e54
+Requires: htmlwidgets, stringr
+GithubRepo: profvis
+GithubUsername: rstudio
+GithubRef: master
+GithubSha1: 1b4176b95bbf1c74eeace755fb60367d66f5adb5
+
+Package: sm
+Source: CRAN
+Version: 2.2-5.4
+Hash: ba61d3c567aa65a31df66fcfbb3c5de8
+
+Package: stringi
+Source: CRAN
+Version: 1.0-1
+Hash: cf342bc407bd5daec77ed1009d5244e1
+
+Package: stringr
+Source: CRAN
+Version: 1.0.0
+Hash: 2676dd5f88890910962b733b0f9540e1
+Requires: magrittr, stringi
+
+Package: yaml
+Source: CRAN
+Version: 2.1.13
+Hash: 4854ccabebc225e8a7309fb4a74980de
