@@ -3,6 +3,11 @@ PackratVersion: 0.4.6.1
 RVersion: 3.2.2
 Repos: CRAN=https://cran.rstudio.com/
 
+Package: assertthat
+Source: CRAN
+Version: 0.1
+Hash: 0afb92b59b02593c70ff8046700ba9d3
+
 Package: digest
 Source: CRAN
 Version: 0.6.8

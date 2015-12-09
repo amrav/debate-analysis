@@ -1,52 +1,70 @@
 library(sm)
 library(profvis)
+library(assertthat)
 
 NUM_TEAMS = 32
 #ROUNDS = 5
 
 generate_perf <- function(mean, rounds) {
-  return(rnorm(rounds, mean=mean, sd=0.5))
+  return(rnorm(rounds, mean=mean, sd=0.2))
 }
 
 rank_distance <- function(skills, ranking) {
   return(sum(abs(skills - skills[ranking])) * NUM_TEAMS / (max(skills) - min(skills)))
 }
 
+rank_perf_distance <- function(scores, standing) {
+  rounds <- sum(!is.na(scores[,1]))
+  avg_scores <- colSums(scores, na.rm = T) / rounds
+  score_order <- order(avg_scores)
+  d <- norm(as.matrix(order(score_order) - order(standing)), 'f')
+  return(d)
+}
+
 
 generate_brackets <- function(sorted_order, wins, sum_scores, pulldown) {
   brackets = split(1:NUM_TEAMS, wins)
+  
   sapply(1:length(brackets), function(i) {
     brackets[[i]] <- brackets[[i]][order(sum_scores[brackets[[i]]])]
   })
+  #str(brackets)
   if (pulldown) {
     brackets <- pulldown(brackets)
   } else {
     brackets <- pullup(brackets) 
   }
+  assert_that(sum(sapply(brackets, length)) == length(wins))
   #print('brackets:')
   #print(brackets)
   return(brackets)
 }
 
 pullup <- function(brackets) {
+  num_teams <- sum(sapply(brackets, length))
   for (i in 1:length(brackets)) {
     if (length(brackets[[i]]) %% 2 != 0) {
       brackets[[i+1]] <- c(tail(brackets[[i]], 1), brackets[[i+1]])
-      length(brackets[[i]]) <- length(brackets[i]) - 1
+      length(brackets[[i]]) <- length(brackets[[i]]) - 1
     }
+    assert_that(length(brackets[[i]]) %% 2 == 0)
   }
   brackets <- brackets[lapply(brackets, length) != 0]
+  assert_that(num_teams == sum(sapply(brackets, length)))
   return(brackets)
 }
 
 pulldown <- function(brackets) {
+  num_teams <- sum(sapply(brackets, length))
   for (i in length(brackets):1) {
     if (length(brackets[[i]]) %% 2 != 0) {
       brackets[[i-1]] <- c(brackets[[i-1]], head(brackets[[i]], 1))
-      brackets[[i]] <- tail(brackets[[i]], length(brackets[i]) - 1)
+      brackets[[i]] <- tail(brackets[[i]], length(brackets[[i]]) - 1)
     }
+    assert_that(length(brackets[[i]]) %% 2 == 0)
   }
   brackets <- brackets[lapply(brackets, length) != 0]
+  assert_that(num_teams == sum(sapply(brackets, length)))
   return(brackets)
 }
 
@@ -97,15 +115,17 @@ random_bracket <- function(brackets) {
 }
 
 generate_pairings <- function(scores, pulldown, bracket_algo) {
+  num_teams <- dim(scores)[2]
   wins <- colSums(scores > 0, na.rm=TRUE)
   sum_scores <- colSums(scores, na.rm=TRUE)
   sorted_order <- order(wins, sum_scores)
   if (all(sum_scores == 0) || bracket_algo == 'random') {
-    sorted_order <- sample(NUM_TEAMS, NUM_TEAMS)
+    sorted_order <- sample(num_teams, num_teams)
     brackets <- list(sorted_order)
   } else {
     brackets <- generate_brackets(sorted_order, wins, sum_scores, pulldown)
   }
+  assert_that(sum(sapply(brackets, length)) == num_teams)
   if (bracket_algo == 'fold') {
     pairings <- fold(brackets)
   } else if (bracket_algo == 'mid_slide' || bracket_algo == 'random') {
@@ -117,6 +137,8 @@ generate_pairings <- function(scores, pulldown, bracket_algo) {
   } else {
     return(0)
   }
+  
+  assert_that(dim(pairings)[1] == num_teams/2)
 
   return(pairings)
 }
@@ -137,7 +159,7 @@ simulate_tournament <- function(x, pulldown=TRUE) {
   perfs = sapply(team_skills, generate_perf)
   
   scores <- matrix(nrow=ROUNDS, ncol=NUM_TEAMS)
-  wins <- rep(0,NUM_TEAMS)
+  #wins <- rep(0,NUM_TEAMS)
   
   sapply(1:ROUNDS, function(i) {
     pairings <- generate_pairings(scores, wins, pulldown)
@@ -145,6 +167,8 @@ simulate_tournament <- function(x, pulldown=TRUE) {
     #print(pairings)
     props <- pairings[1:(dim(pairings)[1]),1]
     opps <- pairings[1:(dim(pairings)[1]),2]
+    assert_that(length(props) == length(opps))
+    assert_that(length(props) + length(opps) == NUM_TEAMS)
     prop_scores <- perfs[i, props] - perfs[i, opps]
     opp_scores <- -prop_scores
     scores[i, props] <- prop_scores
@@ -180,7 +204,7 @@ simulate_tournaments <- function(num_tournaments) {
 
 NUM_TEAMS = 32
 
-simulate_inf_tournament <- function(ROUNDS=10, pulldown=TRUE, bracket_algo='fold', random_round=-1) {
+simulate_inf_tournament <- function(ROUNDS, pulldown=TRUE, bracket_algo='fold', random_round=-1) {
   
   team_skills = rnorm(NUM_TEAMS)
   team_skills <- sort(team_skills)
@@ -198,18 +222,27 @@ simulate_inf_tournament <- function(ROUNDS=10, pulldown=TRUE, bracket_algo='fold
   displacements <- vector(mode='numeric', length=ROUNDS)
   
   for (i in 1:ROUNDS) {
-      if (random_round > 0 && (i %% random_round) == 0) {
-        cat('random round! at ', i, "\n")
-        pairings <- generate_pairings(scores, pulldown, 'random_bracket')  
-      } else {
-        pairings <- generate_pairings(scores, pulldown, bracket_algo)
-      }
-            
-      #print(pairings)
+    if (random_round > 0 && (i %% random_round) == 0) {
+      cat('random round! at ', i, "\n")
+      pairings <-
+        generate_pairings(scores, pulldown, 'random_bracket')
+    } else {
+      pairings <- generate_pairings(scores, pulldown, bracket_algo)
+    }
+
+    #print(pairings)
     #cat("pairings:\n")
     #print(pairings)
     props <- pairings[1:(dim(pairings)[1]),1]
     opps <- pairings[1:(dim(pairings)[1]),2]
+    
+    #str(props)
+    #str(opps)
+    #print(NUM_TEAMS)
+    
+    assert_that(length(props) == length(opps))
+    assert_that(length(props) + length(opps) == NUM_TEAMS)
+    
     prop_scores <- perfs[i, props] - perfs[i, opps]
     opp_scores <- -prop_scores
     scores[i, props] <- prop_scores
@@ -225,13 +258,18 @@ simulate_inf_tournament <- function(ROUNDS=10, pulldown=TRUE, bracket_algo='fold
     order_standings <- order(standings)
     displacement <- order_standings - 1:NUM_TEAMS
     displacement2 <- rank_distance(team_skills, standings)
+    displacement3 <- rank_perf_distance(scores, standings)
     #displacements[i] <- norm(as.matrix(displacement), 'f')
-    displacements[i] <- displacement2
+    #displacements[i] <- displacement2
+    #displacements[i] <- displacement3
+    displacements[i] <- cor(order_standings, 1:32, method='kendall')
   }
   
   #str(displacements)
   standings <- generate_standings(scores)
+  #print(colSums(scores))
   #print(standings)
+  #print(order(colSums(scores)))
   #plot(1:ROUNDS, displacements, type='l',
   #     ylim=c(20,100), xlim=c(0,ROUNDS))
   
@@ -251,9 +289,10 @@ plot_algo <- function(bracket_algo, pulldown=FALSE, color='black', first=F, rand
   #print(avg_disps)
   if (first) {
     plot(1:ROUNDS, avg_disps, type='l',
-         ylim=c(50,170),
+         ylim=c(0,1),
          xlim=c(0,ROUNDS), col=color,
-         xlab='Number of rounds', ylab='Rank distance')
+         xlab='Number of rounds', 
+         ylab=expression(paste('Rank correlation (Kendall\'s ', tau, ')')))
   } else {
     lines(1:ROUNDS, avg_disps, type='l',
           col=color)
@@ -269,12 +308,13 @@ plot_algo('fold', pulldown=F, color='steelblue')
 plot_algo('fold', pulldown=T, color='skyblue')
 plot_algo('random', pulldown=F, color='rosybrown')
 plot_algo('random', pulldown=T, color='rosybrown4')
-#plot_algo('power_bracket', pulldown=F, color='darkgreen')
-#plot_algo('power_bracket', pulldown=T, color='forestgreen')
+plot_algo('power_bracket', pulldown=F, color='darkgreen')
+plot_algo('power_bracket', pulldown=T, color='forestgreen')
 
 # Dark is pullup, light is pulldown
-legend("topright",legend=c("MID-SLIDE","RANDOM-BRACKET", "FOLD", "RANDOM"), lty=c(1,1),
-       col=c('red', 'magenta', 'steelblue', 'rosybrown'),
+legend("bottomright",legend=c("MID-SLIDE","RANDOM-BRACKET", "FOLD", "RANDOM", "POWER-BRACKET"),
+       lty=c(1,1),
+       col=c('red', 'magenta', 'steelblue', 'rosybrown', 'darkgreen'),
        cex=0.75)
 
 #simulate_tournaments(2)
